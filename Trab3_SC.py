@@ -4,6 +4,37 @@ import sys
 import hashlib
 from random import randrange
 
+# Funcao para escrever no arquivo de texo
+def write(message, ms2):
+  file = open("texto.txt", "a")
+  msg = ms2 + ': '+ message + '\n\n'
+  file.write(msg)
+  file.close()
+
+# funcao que vai ler da arquivo de texto as informacoes que precisa para descriptar
+def read(arquivo):
+  with open(arquivo) as file:
+    for i in file:
+      #print('i = ',i)
+      if 'N:' in i:
+        n = int(i[3:])
+      elif 'D:' in i:
+        d = int(i[3:])
+      elif 'R:' in i:
+        r = int(i[3:]) 
+      elif 'lenMsg:' in i:
+        lenMsg = int(i[8:])
+      elif 'assinatura:' in i:
+        sing = i[12:-1]
+      elif 'base64:' in i:
+        base64 = i[8:-1]
+    
+  file.close()
+  
+  return n, d, r, lenMsg, sing, base64
+
+  
+
 # Funcao que transforma a mensagen para base64
 def base64_encode(msg):
   i = 0
@@ -236,7 +267,7 @@ def RSA_OAEP_encoding(msg, n, e, r):
 def signature(msg,d,n):
   hash_msg = hashlib.new("sha3_512", msg.encode())
   hash_msg = hash_msg.hexdigest()
-  print('msg signature = ',msg)
+  #print('msg signature = ',msg)
   # Eh usado a chave privada, pois somente o emissor pode assinar ela
   # e evita que outras pode assinar por ele
   signature = hex(pow(int(hash_msg,16), d, n))
@@ -246,7 +277,7 @@ def signature(msg,d,n):
 # Funcao de verificacao de assinatura onde o receptor verifica 
 # se a assinatura eh mesmo que o hash da mensagen descriptografado
 def verification(msg,signature64,e,n):
-  print('msg = ',msg)
+  #print('msg = ',msg)
   hash_msg = hashlib.new("sha3_512", msg.encode())
   hash_msg = hash_msg.hexdigest()
 
@@ -262,11 +293,17 @@ def verification(msg,signature64,e,n):
 
 
 def main():
+  #------------------------------------------------
+  # bloco que vai gerar as chaves
   p = generator()
 
   q = generator()
 
   n = p*q
+  # apaga os conteudo do arquivo para receber as novas informacoes
+  open('texto.txt', 'w').close()
+  n_str = str(n)
+  write(n_str,'N')
 
   phiN = (p-1)*(q-1)
 
@@ -274,41 +311,59 @@ def main():
 
 
   d = generator_D(e,phiN)
+  d_str = str(d)
+
+  write(d_str,'D')
 
   #------------------------------------------------
+  # bloco que criptografa, parte do emissor
   msg = input('Digite a mensagem: ')
 
   men = msg.encode('utf-8').hex()
-  print('men = ',men)
-  print('---------------------------------------------------\n')
+
   lenMsg = len(men) // 2
+  len_str = str(lenMsg)
+  write(len_str,'lenMsg')
   r = random.getrandbits(512)
+  r_str = str(r)
+  write(r_str,'R')
 
   sign64 = signature(men,d,n)
+  write(sign64,'assinatura')
   crypto = RSA_OAEP_encoding(men, n, e, r) 
-  print('crypto = ',crypto)
-  print('---------------------------------------------------\n')
-  #print('type crypt = ',type(crypto))
+
   text_base64 = base64_encode(crypto)
-  print('texto base64 = ',text_base64)
-  print('---------------------------------------------------\n')
+  write(text_base64,'base64')
 
-  text_base64 = base64_decode(text_base64)
-  print('texto decrypto = ',text_base64)
-  print('---------------------------------------------------\n')
 
-  descrypto = RSA_OAEP_decoding(crypto,lenMsg, n, d, r)
-  print('descrypto = ',descrypto)
-  print('---------------------------------------------------\n')
-  print(bytes.fromhex(descrypto).decode('utf-8'))
+  #------------------------------------------------
+
+
+  #------------------------------------------------
+
+  # bloco que descriptografa, parte de receptor
+
+  # Recebe do arrquivo .txt as informacoes necessaria para descriptografar
+  n, d, r, lenMsg, sign64, textbase64 = read("texto.txt")
+
+  # decotifica o texto da base64 para o normal
+  textbase64 = base64_decode(textbase64)
+
+  # manda descriptografar a mensagem com RSA OAEP
+  descrypto = RSA_OAEP_decoding(textbase64,lenMsg, n, d, r)
+
   msg_descrypto = bytes.fromhex(descrypto).decode('utf-8')
-  print('---------------------------------------------------\n')
+  print('Mensagem descriptografado: ',msg_descrypto)
+
+  # Parte que verifica se a assinatura esta correta
   if(verification(descrypto,sign64,e,n) == True):
-    print('_________________Verificação correta!_________________')
-    print('---------------------------------------------------\n')
+    print('\n_________________Verificação correta!_________________')
+    #print('---------------------------------------------------\n')
   else:
-    print('_________________Verificação incorreta!_________________')
-    print('---------------------------------------------------\n')
+    print('\n_________________Verificação incorreta!_________________')
+    #print('---------------------------------------------------\n')
+  
+  #------------------------------------------------
 
 if __name__ == '__main__':
   main()

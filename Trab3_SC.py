@@ -336,7 +336,7 @@ def main():
   #------------------------------------------------
   # bloco que criptografa, parte do emissor
 
-  msg = input('Pessoa A digeti uma mensagem: ')
+  msg = input('Pessoa A digite uma mensagem: ')
 
   men = msg.encode('utf-8').hex()
 

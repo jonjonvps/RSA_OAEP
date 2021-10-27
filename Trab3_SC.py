@@ -16,11 +16,7 @@ def read(arquivo):
   with open(arquivo) as file:
     for i in file:
       #print('i = ',i)
-      if 'N:' in i:
-        n = int(i[3:])
-      elif 'D:' in i:
-        d = int(i[3:])
-      elif 'R:' in i:
+      if 'R:' in i:
         r = int(i[3:]) 
       elif 'lenMsg:' in i:
         lenMsg = int(i[8:])
@@ -31,7 +27,7 @@ def read(arquivo):
     
   file.close()
   
-  return n, d, r, lenMsg, sing, base64
+  return r, lenMsg, sing, base64
 
   
 
@@ -178,6 +174,7 @@ def i2osp(integer: int, size: int = 4):
   return "".join([chr((integer >> (8 * i)) & 0xFF) for i in reversed(range(size))])
 
 # É uma função de gerar uma máscara definida na Chave Pública de criptografia padrão
+# definindo a mensagem e o tamanho para definar a mascara
 def Mask_generation_function(text, length):
   cont = 0
   mask = ""
@@ -294,30 +291,52 @@ def verification(msg,signature64,e,n):
 
 def main():
   #------------------------------------------------
-  # bloco que vai gerar as chaves
-  p = generator()
-
-  q = generator()
-
-  n = p*q
-  # apaga os conteudo do arquivo para receber as novas informacoes
+  # bloco que vai gerar as chaves da pessoa A e da pessoa B
+  
+  # limpa o arquivo de texto
   open('texto.txt', 'w').close()
-  n_str = str(n)
-  write(n_str,'N')
 
-  phiN = (p-1)*(q-1)
-
-  e = generator_E(phiN)
+  p_A = generator()
+  q_A = generator()
 
 
-  d = generator_D(e,phiN)
-  d_str = str(d)
+  write(str(p_A),'P_A')
+  write(str(q_A),'Q_A')
 
-  write(d_str,'D')
+  p_B = generator()
+  q_B = generator()
 
+  write(str(p_B),'P_B')
+  write(str(q_B),'Q_B')
+
+  n_A = p_A*q_A
+  n_B = p_B*q_B
+
+  write(str(n_A),'N_A')
+  write(str(n_B),'N_B')
+  
+  phiN_A = (p_A-1)*(q_A-1)
+  phiN_B = (p_B-1)*(q_B-1)
+
+  write(str(phiN_A),'PHIN_A')
+  write(str(phiN_B),'phiN_A')  
+
+  e_A = generator_E(phiN_A)
+  e_B = generator_E(phiN_B)
+
+  write(str(e_A),'E_A')
+  write(str(e_B),'E_A')
+
+  d_A = generator_D(e_A,phiN_A)
+  d_B = generator_D(e_B,phiN_B)
+
+  write(str(d_A),'D_A')
+  write(str(d_B),'D_B')
+  write('---------------------\n\n\n','-')
   #------------------------------------------------
   # bloco que criptografa, parte do emissor
-  msg = input('Digite a mensagem: ')
+
+  msg = input('Pessoa A digete uma mensagem: ')
 
   men = msg.encode('utf-8').hex()
 
@@ -328,42 +347,91 @@ def main():
   r_str = str(r)
   write(r_str,'R')
 
-  sign64 = signature(men,d,n)
+  # a pessoa A vai fazer a assinatura com sua chave privada
+  sign64 = signature(men,d_A,n_A)
   write(sign64,'assinatura')
-  crypto = RSA_OAEP_encoding(men, n, e, r) 
 
+  # a pessoa A vai criptografar com a chave publica da pessoa B
+  crypto = RSA_OAEP_encoding(men, n_B, e_B, r) 
+
+  # codificar para base64
   text_base64 = base64_encode(crypto)
   write(text_base64,'base64')
-
-
-  #------------------------------------------------
-
+  write('---------------------\n\n\n','-')
 
   #------------------------------------------------
-
   # bloco que descriptografa, parte de receptor
 
   # Recebe do arrquivo .txt as informacoes necessaria para descriptografar
-  n, d, r, lenMsg, sign64, textbase64 = read("texto.txt")
+  r, lenMsg, sign64, textbase64 = read("texto.txt")
 
   # decotifica o texto da base64 para o normal
   textbase64 = base64_decode(textbase64)
 
   # manda descriptografar a mensagem com RSA OAEP
-  descrypto = RSA_OAEP_decoding(textbase64,lenMsg, n, d, r)
+  descrypto = RSA_OAEP_decoding(textbase64,lenMsg, n_B, d_B, r)
 
   msg_descrypto = bytes.fromhex(descrypto).decode('utf-8')
-  print('Mensagem descriptografado: ',msg_descrypto)
+  print('\nMensagem descriptografado pela pessoa B: ',msg_descrypto)
 
   # Parte que verifica se a assinatura esta correta
-  if(verification(descrypto,sign64,e,n) == True):
-    print('\n_________________Verificação correta!_________________')
+  if(verification(descrypto,sign64,e_A,n_A) == True):
+    print('\n_________________Verificação correta!_________________\n')
+
+  else:
+    print('\n_________________Verificação incorreta!_________________\n')
+
+  
+
+  # Parte em que a pessoa B vai enviar a resposta para pessoa A
+  #------------------------------------------------
+  
+  # bloco que criptografa, parte do emissor
+
+  msg = input('Pessoa B digete uma mensagem: ')
+
+  men = msg.encode('utf-8').hex()
+
+  lenMsg = len(men) // 2
+  len_str = str(lenMsg)
+  write(len_str,'lenMsg')
+  r = random.getrandbits(512)
+  r_str = str(r)
+  write(r_str,'R')
+  # a pessoa B vai fazer a assinatura com sua chave privada
+  sign64 = signature(men,d_B,n_B)
+  write(sign64,'assinatura')
+
+  # a pessoa B vai criptografar com a chave publica da pessoa A
+  crypto = RSA_OAEP_encoding(men, n_A, e_A, r) 
+
+  text_base64 = base64_encode(crypto)
+  write(text_base64,'base64')
+
+  #------------------------------------------------
+  # bloco que descriptografa, parte de receptor
+
+  # Recebe do arrquivo .txt as informacoes necessaria para descriptografar
+  r, lenMsg, sign64, textbase64 = read("texto.txt")
+
+  # decotifica o texto da base64 para o normal
+  textbase64 = base64_decode(textbase64)
+
+  # manda descriptografar a mensagem com RSA OAEP
+  descrypto = RSA_OAEP_decoding(textbase64,lenMsg, n_A, d_A, r)
+
+  msg_descrypto = bytes.fromhex(descrypto).decode('utf-8')
+  print('\nMensagem descriptografado pela pessoa A: ',msg_descrypto)
+
+  # Parte que verifica se a assinatura esta correta
+  if(verification(descrypto,sign64,e_B,n_B) == True):
+    print('\n_________________Verificação correta!_________________\n')
     #print('---------------------------------------------------\n')
   else:
-    print('\n_________________Verificação incorreta!_________________')
+    print('\n_________________Verificação incorreta!_________________\n')
     #print('---------------------------------------------------\n')
   
-  #------------------------------------------------
+  #------------------------------------------------  
 
 if __name__ == '__main__':
   main()

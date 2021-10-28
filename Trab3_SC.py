@@ -1,3 +1,6 @@
+# Aluno: João Victor Pinheiro de Souza 180103407
+# Aluno: Raylan da Silva Sales 180108531
+
 import random
 import math
 import sys

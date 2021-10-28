@@ -56,7 +56,7 @@ def base64_encode(msg):
     # Pega três caracteres por vez
     for j in range(0,3,1):
       
-      # transforma a char da mensagem para int de acordo com a tabela ASCII
+      # transforma o char da mensagem para int de acordo com a tabela ASCII
       n = ord(msg[i])
       i += 1
   
@@ -362,10 +362,10 @@ def main():
   #------------------------------------------------
   # bloco que descriptografa, parte de receptor
 
-  # Recebe do arrquivo .txt as informacoes necessaria para descriptografar
+  # Recebe do arquivo .txt as informacoes necessaria para descriptografar
   r, lenMsg, sign64, textbase64 = read("texto.txt")
 
-  # decotifica o texto da base64 para o normal
+  # decodifica o texto da base64 para o normal
   textbase64 = base64_decode(textbase64)
 
   # manda descriptografar a mensagem com RSA OAEP
